@@ -1,0 +1,21 @@
+# Go
+server/pagelite-server
+server/pagelite-server.exe
+server/data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*~ 
