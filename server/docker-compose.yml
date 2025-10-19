@@ -1,0 +1,13 @@
+services:
+  pagelite-server:
+    image: sstarbucks/pagelite-server:latest
+    container_name: pagelite-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - USER=admin
+      - PASS=admin
+    volumes:
+      - ./data:/app/data
+ 
