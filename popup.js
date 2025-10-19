@@ -70,14 +70,6 @@ async function capturePageContent() {
     headEl.prepend(metaCharset);
   }
 
-  // 添加生成器注释
-  if (headEl) {
-    const comment = docClone.createComment(
-      ' 由 PageLite 保存 - 轻量网页存档工具 '
-    );
-    headEl.insertBefore(comment, headEl.firstChild);
-  }
-
   const serializedHtml = docClone.documentElement.outerHTML;
   const doctypeString = originalDoctype
     ? `<!DOCTYPE ${originalDoctype.name}${
