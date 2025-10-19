@@ -1,0 +1,14 @@
+# 数据目录
+data/
+
+# 编译后的二进制文件
+pagelite-server
+pagelite-server.exe
+
+# 文档
+README.md
+
+# Docker 文件本身
+Dockerfile
+docker-compose.yml
+.dockerignore
