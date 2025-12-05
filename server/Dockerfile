@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags="-w -s" -o pagelite-server main.go
 
 # 运行阶段
-FROM alpine:latest
+FROM alpine:3.20
 
 # 安装必要工具和时区数据
 RUN apk --no-cache add ca-certificates tzdata

@@ -473,7 +473,7 @@ const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <tr><th>Name</th><th style="text-align: right;">Size</th></tr>
 {{if eq .Path "/"}}<tr><td>📄 <a href="/all/">ALL</a></td><td class="size">-</td></tr>{{end}}
 {{if .Items}}{{range .Items}}<tr>
-<td>{{if .IsDir}}📁 <a href="{{.Name}}/">{{.Name}}/</a>{{else}}<a href="{{.Name}}">{{.Name}}</a>{{end}}</td>
+<td>{{if .IsDir}}📁 <a href="{{.Name}}/">{{.Name}}/</a>{{else}}<a href="{{.Name}}" target="_blank">{{.Name}}</a>{{end}}</td>
 <td class="size">{{.Size}}</td>
 </tr>
 {{end}}{{else}}{{if ne .Path "/"}}<tr><td colspan="2" class="empty">Directory is empty</td></tr>{{end}}
@@ -559,7 +559,7 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <table>
 <tr><th>Name</th><th>Year</th><th style="text-align: right;">Size</th></tr>
 {{if .Files}}{{range .Files}}<tr>
-<td><a href="/{{.Year}}/{{.Name}}">{{.Name}}</a></td>
+<td><a href="/{{.Year}}/{{.Name}}" target="_blank">{{.Name}}</a></td>
 <td class="year">{{.Year}}</td>
 <td class="size">{{.Size}}</td>
 </tr>
