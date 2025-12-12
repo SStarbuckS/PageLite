@@ -471,8 +471,8 @@ const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
   </style>
 </head>
 <body>
-{{if ne .Path "/"}}<div class="back"><a href="/">⬆️ Parent Directory</a></div>{{end}}
 <h1>Index of {{.Path}}</h1>
+{{if ne .Path "/"}}<div class="back"><a href="/">⬆️ Parent Directory</a></div>{{end}}
 <table>
 <tr><th>Name</th><th style="text-align: right;">Size</th></tr>
 {{if eq .Path "/"}}<tr><td>📄 <a href="/all/">ALL</a></td><td class="size">-</td></tr>{{end}}
@@ -493,7 +493,7 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All Files</title>
+  <title>Index of /all/</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -560,8 +560,8 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
   </style>
 </head>
 <body>
+<h1>Index of /all/</h1>
 <div class="back"><a href="/">⬆️ Parent Directory</a></div>
-<h1>All Files</h1>
 <table>
 <tr><th>Name</th><th>Year</th><th style="text-align: right;">Size</th></tr>
 {{if .Files}}{{range .Files}}<tr>
