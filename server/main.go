@@ -402,21 +402,25 @@ const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Index of {{.Path}}</title>
   <style>
     body {
-      font-family: monospace;
+      font-family: system-ui, -apple-system, sans-serif;
       background: white;
-      color: black;
-      margin: 20px;
-      font-size: 20px;
+      color: #333;
+      margin: 0;
+      padding: 16px;
+      font-size: 16px;
+      line-height: 1.5;
     }
     h1 {
-      font-size: 20px;
-      font-weight: normal;
-      border-bottom: 1px solid #000;
-      padding-bottom: 5px;
-      margin-bottom: 10px;
+      font-size: 24px;
+      font-weight: 600;
+      border-bottom: 2px solid #eaeaea;
+      padding-bottom: 12px;
+      margin: 0 0 20px 0;
+      word-break: break-all;
     }
     table {
       border-collapse: collapse;
@@ -425,31 +429,32 @@ const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
     }
     th {
       text-align: left;
-      padding: 2px 20px 2px 0;
-      border-bottom: 1px solid #000;
-      font-weight: normal;
+      padding: 12px 0;
+      border-bottom: 2px solid #eaeaea;
+      font-weight: 600;
+      color: #666;
     }
     td {
-      padding: 2px 20px 2px 0;
-      font-size: 18px;
+      padding: 12px 8px 12px 0;
+      font-size: 16px;
+      border-bottom: 1px solid #f0f0f0;
     }
     td.size {
       text-align: right;
       white-space: nowrap;
-      font-size: 16px;
+      font-size: 14px;
+      color: #888;
+      padding-right: 0;
     }
     a {
-      color: blue;
+      color: #0366d6;
       text-decoration: none;
-      font-size: 18px;
+      font-size: 16px;
+      display: inline-block;
+      padding: 4px 0;
     }
     a:hover {
       text-decoration: underline;
-    }
-    hr {
-      border: 0;
-      border-top: 1px solid #000;
-      margin: 10px 0;
     }
     .footer {
       margin-top: 20px;
@@ -468,7 +473,6 @@ const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <body>
 {{if ne .Path "/"}}<div class="back"><a href="/">⬆️ Parent Directory</a></div>{{end}}
 <h1>Index of {{.Path}}</h1>
-<hr>
 <table>
 <tr><th>Name</th><th style="text-align: right;">Size</th></tr>
 {{if eq .Path "/"}}<tr><td>📄 <a href="/all/">ALL</a></td><td class="size">-</td></tr>{{end}}
@@ -478,7 +482,6 @@ const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 </tr>
 {{end}}{{else}}{{if ne .Path "/"}}<tr><td colspan="2" class="empty">Directory is empty</td></tr>{{end}}
 {{end}}</table>
-<hr>
 <div class="footer">PageLite Archive Server | {{.Count}} items | Generated: {{.Generated}}</div>
 </body>
 </html>
@@ -489,21 +492,24 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>All Files</title>
   <style>
     body {
-      font-family: monospace;
+      font-family: system-ui, -apple-system, sans-serif;
       background: white;
-      color: black;
-      margin: 20px;
-      font-size: 20px;
+      color: #333;
+      margin: 0;
+      padding: 16px;
+      font-size: 16px;
+      line-height: 1.5;
     }
     h1 {
-      font-size: 20px;
-      font-weight: normal;
-      border-bottom: 1px solid #000;
-      padding-bottom: 5px;
-      margin-bottom: 10px;
+      font-size: 24px;
+      font-weight: 600;
+      border-bottom: 2px solid #eaeaea;
+      padding-bottom: 12px;
+      margin: 0 0 20px 0;
     }
     table {
       border-collapse: collapse;
@@ -512,31 +518,32 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
     }
     th {
       text-align: left;
-      padding: 2px 20px 2px 0;
-      border-bottom: 1px solid #000;
-      font-weight: normal;
+      padding: 12px 0;
+      border-bottom: 2px solid #eaeaea;
+      font-weight: 600;
+      color: #666;
     }
     td {
-      padding: 2px 20px 2px 0;
-      font-size: 18px;
+      padding: 12px 8px 12px 0;
+      font-size: 16px;
+      border-bottom: 1px solid #f0f0f0;
     }
     td.size {
       text-align: right;
       white-space: nowrap;
-      font-size: 16px;
+      font-size: 14px;
+      color: #888;
+      padding-right: 0;
     }
     a {
-      color: blue;
+      color: #0366d6;
       text-decoration: none;
-      font-size: 18px;
+      font-size: 16px;
+      display: inline-block;
+      padding: 4px 0;
     }
     a:hover {
       text-decoration: underline;
-    }
-    hr {
-      border: 0;
-      border-top: 1px solid #000;
-      margin: 10px 0;
     }
     .footer {
       margin-top: 20px;
@@ -555,7 +562,6 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 <body>
 <div class="back"><a href="/">⬆️ Parent Directory</a></div>
 <h1>All Files</h1>
-<hr>
 <table>
 <tr><th>Name</th><th>Year</th><th style="text-align: right;">Size</th></tr>
 {{if .Files}}{{range .Files}}<tr>
@@ -565,7 +571,6 @@ const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"
 </tr>
 {{end}}{{else}}<tr><td colspan="3" class="empty">No files yet</td></tr>
 {{end}}</table>
-<hr>
 <div class="footer">PageLite Archive Server | {{.Count}} files | Generated: {{.Generated}}</div>
 </body>
 </html>
