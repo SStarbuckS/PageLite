@@ -6,19 +6,14 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "downloads",
     "storage"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
   "action": {
     "default_title": "PageLite / 轻页",
     "default_popup": "popup.html"
   },
   "options_page": "options.html"
-} 
+}
