@@ -1,103 +1,72 @@
 # PageLite
 
-轻量网页存档工具 - 保存网页为离线HTML，支持云端存储
+轻量网页存档工具 - 一键保存网页为离线 HTML，支持本地存储和云端同步。
 
-## 功能
+## 功能特性
 
-- 保存网页到本地（离线可用）
-- 上传网页到私有服务器
-- 按年份自动归档
-- Web界面浏览所有存档
+- 保存完整网页（内联样式、绝对路径资源）
+- 本地保存：离线随时查看
+- 云端上传：私有服务器存储
+- 自动按年份归档
+- Web 界面浏览存档
 
-## 安装
+## 快速开始
 
-### 1. 安装浏览器扩展
+### 安装扩展
 
-1. 打开 Chrome 浏览器，访问 `chrome://extensions/`
-2. 启用"开发者模式"
-3. 点击"加载已解压的扩展程序"
-4. 选择本项目根目录
+1. 打开 `chrome://extensions/`
+2. 启用「开发者模式」
+3. 点击「加载已解压的扩展程序」→ 选择本项目根目录
 
-### 2. 启动服务器
+### 启动服务器
 
-```bash
-cd server
-go build -o pagelite-server.exe main.go   # Windows
-go build -o pagelite-server main.go       # Linux/Mac
-
-# 运行
-.\pagelite-server.exe    # Windows
-./pagelite-server        # Linux/Mac
-```
-
-或使用 Docker：
+**Docker（推荐）：**
 
 ```bash
 cd server
 docker-compose up -d
 ```
 
-## 使用
+**手动编译：**
+
+```bash
+cd server
+go build -o pagelite-server main.go
+
+# 设置环境变量后运行
+USER=admin PASS=yourpassword ./pagelite-server
+```
 
 ### 配置扩展
 
-1. 点击扩展图标 → 设置
-2. 填写服务器地址：`http://localhost:8080`
-3. 填写用户名：`admin`，密码：`admin`
-4. 保存设置
+点击扩展图标 → ⚙️ 设置：
+- 服务器地址：`http://your-server:8080`
+- 用户名 / 密码：与服务器环境变量一致
 
-### 保存网页
+## 环境变量
 
-- **本地保存**：点击扩展图标 → 保存到本地
-- **云端上传**：点击扩展图标 → 上传到云端
+| 变量 | 说明 | 必填 |
+|------|------|------|
+| `USER` | 认证用户名 | ✅ |
+| `PASS` | 认证密码 | ✅ |
+| `PORT` | 监听端口 | 默认 `8080` |
+| `MAX_UPLOAD_MB` | 最大上传大小 (MB) | 默认 `50` |
 
-### 查看存档
+## 命令行上传
 
-访问 `http://localhost:8080`：
-- 首页显示年份目录和 ALL 入口
-- 点击年份查看该年的文件
-- 点击 ALL 查看所有文件
-
-## 配置
-
-### 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `USER` | 用户名 | `admin` |
-| `PASS` | 密码 | `admin` |
-
-**Windows:**
-```powershell
-$env:USER="myuser"
-$env:PASS="mypass"
-.\pagelite-server.exe
-```
-
-**Linux/Mac:**
 ```bash
-export USER=myuser
-export PASS=mypass
-./pagelite-server
+curl -u admin:yourpassword -F "file=@yourfile" http://your-server:8080/upload
 ```
 
 ## 项目结构
 
 ```
 PageLite/
-├── .gitignore
-├── manifest.json          # 扩展配置
-├── background.js          # 后台服务
-├── popup.html             # 弹出界面
-├── popup.js               # 弹出界面逻辑
-├── options.html           # 设置页面
-├── options.js             # 设置页面逻辑
-├── README.md
-└── server/                # 服务器后端
-    ├── .dockerignore
-    ├── main.go            # 主程序
-    ├── go.mod             # Go模块
-    ├── Dockerfile         # Docker镜像
-    ├── docker-compose.yml # Docker配置
-    └── data/              # 存档目录（上传自动创建）
+├── manifest.json       # 扩展配置
+├── popup.html/js       # 弹出界面
+├── options.html/js     # 设置页面
+└── server/
+    ├── main.go         # 后端服务
+    ├── Dockerfile
+    └── docker-compose.yml
 ```

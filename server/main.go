@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -11,18 +12,19 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	dataDir     = "./data"
-	maxFileSize = 50 * 1024 * 1024 // 50MB
+	dataDir = "./data"
 )
 
 var (
-	username string
-	password string
+	username    string
+	password    string
+	maxFileSize int64 = 50 * 1024 * 1024 // 默认 50MB
 )
 
 type UploadResponse struct {
@@ -36,11 +38,17 @@ func main() {
 	username = os.Getenv("USER")
 	password = os.Getenv("PASS")
 
-	if username == "" {
-		username = "admin"
+	if username == "" || password == "" {
+		log.Fatalf("必须设置环境变量 USER 和 PASS")
 	}
-	if password == "" {
-		password = "admin"
+
+	// 读取最大上传限制 (单位: MB)
+	if maxUploadMB := os.Getenv("MAX_UPLOAD_MB"); maxUploadMB != "" {
+		if size, err := strconv.ParseInt(maxUploadMB, 10, 64); err == nil && size > 0 {
+			maxFileSize = size * 1024 * 1024
+		} else {
+			log.Printf("无效的 MAX_UPLOAD_MB: %s，使用默认值 50MB", maxUploadMB)
+		}
 	}
 
 	// 确保数据目录存在
@@ -57,12 +65,13 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("🚀 PageLite 服务器启动")
-	log.Printf("📡 监听端口: %s", port)
-	log.Printf("👤 用户名: %s", username)
-	log.Printf("🔐 密码: %s", strings.Repeat("*", len(password)))
-	log.Printf("📁 存储目录: %s", dataDir)
-	log.Println("✅ 准备就绪")
+	log.Printf("PageLite 服务器启动")
+	log.Printf("监听端口: %s", port)
+	log.Printf("用户名: %s", username)
+	log.Printf("密码: %s", strings.Repeat("*", len(password)))
+	log.Printf("最大上传: %d MB", maxFileSize/1024/1024)
+	log.Printf("存储目录: %s", dataDir)
+	log.Println("准备就绪")
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("启动服务器失败: %v", err)
@@ -72,12 +81,6 @@ func main() {
 // Basic Auth 中间件
 func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 如果没有配置认证，直接通过
-		if username == "" || password == "" {
-			handler(w, r)
-			return
-		}
-
 		auth := r.Header.Get("Authorization")
 		if auth == "" {
 			w.Header().Set("WWW-Authenticate", `Basic realm="PageLite"`)
@@ -98,7 +101,9 @@ func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
 		}
 
 		credentials := strings.SplitN(string(decoded), ":", 2)
-		if len(credentials) != 2 || credentials[0] != username || credentials[1] != password {
+		usernameMatch := subtle.ConstantTimeCompare([]byte(credentials[0]), []byte(username)) == 1
+		passwordMatch := subtle.ConstantTimeCompare([]byte(credentials[1]), []byte(password)) == 1
+		if len(credentials) != 2 || !usernameMatch || !passwordMatch {
 			http.Error(w, "用户名或密码错误", http.StatusUnauthorized)
 			return
 		}
@@ -139,20 +144,11 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// 获取额外字段
-	title := r.FormValue("title")
-	url := r.FormValue("url")
-	timestamp := r.FormValue("timestamp")
-
 	// 记录日志
-	log.Printf("📥 接收上传: %s | 标题: %s | URL: %s | 时间: %s",
-		header.Filename, title, url, timestamp)
+	log.Printf("接收上传: %s", header.Filename)
 
-	// 从时间戳中提取年份（格式: YYYY-MM-DD_HH-mm）
+	// 按当前年份归档
 	year := time.Now().Format("2006")
-	if timestamp != "" && len(timestamp) >= 4 {
-		year = timestamp[:4]
-	}
 
 	// 创建年份目录
 	yearDir := filepath.Join(dataDir, year)
@@ -166,7 +162,9 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 保存文件到年份目录
-	destPath := filepath.Join(yearDir, header.Filename)
+	// 使用 filepath.Base 防止路径遍历攻击
+	safeFilename := filepath.Base(header.Filename)
+	destPath := filepath.Join(yearDir, safeFilename)
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		log.Printf("创建文件失败: %v", err)
@@ -189,7 +187,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("✅ 保存成功: %s (%.2f KB)", header.Filename, float64(written)/1024)
+	log.Printf("保存成功: %s (%.2f KB)", header.Filename, float64(written)/1024)
 
 	respondJSON(w, http.StatusOK, UploadResponse{
 		Success:  true,
@@ -222,9 +220,17 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// 子目录路径
 		subPath := strings.Trim(path, "/")
 		dirPath := filepath.Join(dataDir, subPath)
+
+		// 路径遍历保护
+		absDataDir, _ := filepath.Abs(dataDir)
+		absDirPath, _ := filepath.Abs(dirPath)
+		if !strings.HasPrefix(absDirPath, absDataDir) {
+			http.NotFound(w, r)
+			return
+		}
+
 		if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
 			if err := generateDirIndex(w, subPath, path); err != nil {
 				http.Error(w, "生成索引页失败", http.StatusInternalServerError)
@@ -237,6 +243,14 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	// 文件路径（不以斜杠结尾）：直接提供文件
 	if len(path) > 1 && path[len(path)-1] != '/' {
 		filePath := filepath.Join(dataDir, strings.TrimPrefix(path, "/"))
+
+		// 路径遍历保护：确保最终路径在 dataDir 内
+		absDataDir, _ := filepath.Abs(dataDir)
+		absFilePath, _ := filepath.Abs(filePath)
+		if !strings.HasPrefix(absFilePath, absDataDir+string(filepath.Separator)) {
+			http.NotFound(w, r)
+			return
+		}
 
 		// 检查文件是否存在
 		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
@@ -358,7 +372,7 @@ func generateDirIndex(w http.ResponseWriter, subPath string, urlPath string) err
 			return items[i].IsDir // 目录优先
 		}
 		if items[i].IsDir {
-			return items[i].Name < items[j].Name // 目录按名称升序
+			return items[i].Name > items[j].Name // 目录按名称降序（最新年份在前）
 		}
 		return items[i].ModTime.After(items[j].ModTime) // 文件按时间倒序
 	})
@@ -397,181 +411,269 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// 目录索引模板（nginx 风格）
-const dirIndexTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
-<html>
+const dirIndexTemplate = `<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Index of {{.Path}}</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
       color: #333;
       margin: 0;
-      padding: 16px;
-      font-size: 16px;
+      padding: 20px;
+      font-size: 14px;
       line-height: 1.5;
     }
     h1 {
-      font-size: 24px;
-      font-weight: 600;
-      border-bottom: 2px solid #eaeaea;
-      padding-bottom: 12px;
+      font-size: 18px;
+      border-bottom: 1px solid #eee;
       margin: 0 0 20px 0;
+      padding-bottom: 10px;
+      font-weight: normal;
+      overflow-wrap: break-word;
       word-break: break-all;
     }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      border-spacing: 0;
-    }
-    th {
-      text-align: left;
-      padding: 12px 0;
-      border-bottom: 2px solid #eaeaea;
-      font-weight: 600;
-      color: #666;
-    }
-    td {
-      padding: 12px 8px 12px 0;
-      font-size: 16px;
-      border-bottom: 1px solid #f0f0f0;
-    }
-    td.size {
-      text-align: right;
-      white-space: nowrap;
-      font-size: 14px;
-      color: #888;
-      padding-right: 0;
-    }
     a {
-      color: #0366d6;
       text-decoration: none;
-      font-size: 16px;
-      display: inline-block;
-      padding: 4px 0;
+      color: #0366d6;
     }
     a:hover {
       text-decoration: underline;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th {
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid #eee;
+      padding: 8px 0;
+      color: #666;
+    }
+    td {
+      padding: 8px 0;
+      border-bottom: 1px solid #f9f9f9;
+      vertical-align: top;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .name {
+      width: 50%;
+    }
+    .name a {
+      display: block;
+      overflow-wrap: break-word;
+      word-break: break-all;
+    }
+    .date {
+      width: 30%;
+      color: #888;
+      font-size: 13px;
+      text-align: right;
+    }
+    .size {
+      width: 20%;
+      text-align: right;
+      color: #888;
+      font-size: 13px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+    }
     .footer {
       margin-top: 20px;
       font-size: 12px;
-      color: #666;
+      color: #999;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
     }
-    .empty {
-      font-style: italic;
-      padding: 10px 0;
-    }
-    .back {
-      margin-bottom: 10px;
+    @media (max-width: 600px) {
+      body { padding: 15px; }
+      .date { display: none; }
+      .size { display: none; }
+      .name { width: 100%; }
     }
   </style>
 </head>
 <body>
-<h1>Index of {{.Path}}</h1>
-{{if ne .Path "/"}}<div class="back"><a href="/">⬆️ Parent Directory</a></div>{{end}}
-<table>
-<tr><th>Name</th><th style="text-align: right;">Size</th></tr>
-{{if eq .Path "/"}}<tr><td>📄 <a href="/all/">ALL</a></td><td class="size">-</td></tr>{{end}}
-{{if .Items}}{{range .Items}}<tr>
-<td>{{if .IsDir}}📁 <a href="{{.Name}}/">{{.Name}}/</a>{{else}}<a href="{{.Name}}" target="_blank">{{.Name}}</a>{{end}}</td>
-<td class="size">{{.Size}}</td>
-</tr>
-{{end}}{{else}}{{if ne .Path "/"}}<tr><td colspan="2" class="empty">Directory is empty</td></tr>{{end}}
-{{end}}</table>
-<div class="footer">PageLite Archive Server | {{.Count}} items | Generated: {{.Generated}}</div>
+  <h1>Index of {{.Path}}</h1>
+  <table>
+    <thead>
+      <tr>
+        <th class="name">Name</th>
+        <th class="date">Date</th>
+        <th class="size">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{if ne .Path "/"}}
+      <tr>
+        <td class="name"><a href="../">../</a></td>
+        <td class="date"></td>
+        <td class="size"></td>
+      </tr>
+      {{end}}
+      {{if eq .Path "/"}}
+      <tr>
+        <td class="name"><a href="/all/">ALL/</a></td>
+        <td class="date">-</td>
+        <td class="size">-</td>
+      </tr>
+      {{end}}
+      {{range .Items}}
+      <tr>
+        <td class="name">
+          {{if .IsDir}}
+          <a href="{{.Name}}/">{{.Name}}/</a>
+          {{else}}
+          <a href="{{.Name}}" target="_blank">{{.Name}}</a>
+          {{end}}
+        </td>
+        <td class="date">{{.ModTime.Format "2006-01-02 15:04"}}</td>
+        <td class="size">{{.Size}}</td>
+      </tr>
+      {{end}}
+      {{if not .Items}}
+        {{if ne .Path "/"}}
+        <tr><td colspan="3" style="text-align:center; padding: 20px; color: #999;">Directory is empty</td></tr>
+        {{end}}
+      {{end}}
+    </tbody>
+  </table>
+  <div class="footer">
+    PageLite Archive Server | {{.Count}} items | Generated: {{.Generated}}
+  </div>
 </body>
 </html>
 `
 
-// 所有文件汇总页面模板
-const allFilesTemplate = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
-<html>
+const allFilesTemplate = `<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Index of /all/</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
       color: #333;
       margin: 0;
-      padding: 16px;
-      font-size: 16px;
+      padding: 20px;
+      font-size: 14px;
       line-height: 1.5;
     }
     h1 {
-      font-size: 24px;
-      font-weight: 600;
-      border-bottom: 2px solid #eaeaea;
-      padding-bottom: 12px;
+      font-size: 18px;
+      border-bottom: 1px solid #eee;
       margin: 0 0 20px 0;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      border-spacing: 0;
-    }
-    th {
-      text-align: left;
-      padding: 12px 0;
-      border-bottom: 2px solid #eaeaea;
-      font-weight: 600;
-      color: #666;
-    }
-    td {
-      padding: 12px 8px 12px 0;
-      font-size: 16px;
-      border-bottom: 1px solid #f0f0f0;
-    }
-    td.size {
-      text-align: right;
-      white-space: nowrap;
-      font-size: 14px;
-      color: #888;
-      padding-right: 0;
+      padding-bottom: 10px;
+      font-weight: normal;
+      overflow-wrap: break-word;
+      word-break: break-all;
     }
     a {
-      color: #0366d6;
       text-decoration: none;
-      font-size: 16px;
-      display: inline-block;
-      padding: 4px 0;
+      color: #0366d6;
     }
     a:hover {
       text-decoration: underline;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th {
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid #eee;
+      padding: 8px 0;
+      color: #666;
+    }
+    td {
+      padding: 8px 0;
+      border-bottom: 1px solid #f9f9f9;
+      vertical-align: top;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .name {
+      width: 50%;
+    }
+    .name a {
+      display: block;
+      overflow-wrap: break-word;
+      word-break: break-all;
+    }
+    .year {
+      width: 15%;
+      color: #888;
+      font-size: 13px;
+      text-align: right;
+    }
+    .size {
+      width: 15%;
+      text-align: right;
+      color: #888;
+      font-size: 13px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+    }
     .footer {
       margin-top: 20px;
       font-size: 12px;
-      color: #666;
+      color: #999;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
     }
-    .back {
-      margin-bottom: 10px;
-    }
-    .year {
-      color: #666;
-      font-size: 14px;
+    @media (max-width: 600px) {
+      body { padding: 15px; }
+      .year { display: none; }
+      .size { display: none; }
+      .name { width: 100%; }
     }
   </style>
 </head>
 <body>
-<h1>Index of /all/</h1>
-<div class="back"><a href="/">⬆️ Parent Directory</a></div>
-<table>
-<tr><th>Name</th><th>Year</th><th style="text-align: right;">Size</th></tr>
-{{if .Files}}{{range .Files}}<tr>
-<td><a href="/{{.Year}}/{{.Name}}" target="_blank">{{.Name}}</a></td>
-<td class="year">{{.Year}}</td>
-<td class="size">{{.Size}}</td>
-</tr>
-{{end}}{{else}}<tr><td colspan="3" class="empty">No files yet</td></tr>
-{{end}}</table>
-<div class="footer">PageLite Archive Server | {{.Count}} files | Generated: {{.Generated}}</div>
+  <h1>Index of /all/</h1>
+  <table>
+    <thead>
+      <tr>
+        <th class="name">Name</th>
+        <th class="year">Year</th>
+        <th class="size">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="name"><a href="/">../</a></td>
+        <td class="year">-</td>
+        <td class="size">-</td>
+      </tr>
+      {{range .Files}}
+      <tr>
+        <td class="name"><a href="/{{.Year}}/{{.Name}}" target="_blank">{{.Name}}</a></td>
+        <td class="year">{{.Year}}</td>
+        <td class="size">{{.Size}}</td>
+      </tr>
+      {{end}}
+      {{if not .Files}}
+      <tr><td colspan="3" style="text-align:center; padding: 20px; color: #999;">No files found</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  <div class="footer">
+    PageLite Archive Server | {{.Count}} files | Generated: {{.Generated}}
+  </div>
 </body>
 </html>
 `

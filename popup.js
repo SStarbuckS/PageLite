@@ -184,16 +184,7 @@ async function capturePageContent() {
   };
 }
 
-// 格式化时间戳
-function formatTimestamp(date) {
-  const pad = (value) => value.toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${year}-${month}-${day}_${hours}-${minutes}`;
-}
+
 
 // 清理文件名
 function sanitizeFilename(name) {
@@ -225,9 +216,8 @@ btnSave.addEventListener('click', async () => {
       throw new Error('捕获脚本未返回内容');
     }
 
-    const timestamp = formatTimestamp(new Date());
     const pageTitle = result.title ? result.title.trim() : 'page';
-    const fileName = `${sanitizeFilename(pageTitle)}_${timestamp}.html`;
+    const fileName = `${sanitizeFilename(pageTitle)}.html`;
 
     // 使用 <a> 标签下载，确保文件名正确
     const blob = new Blob([result.html], { type: 'text/html;charset=utf-8' });
@@ -283,17 +273,13 @@ btnUpload.addEventListener('click', async () => {
 
     showStatus('正在上传到云端...', 'info');
 
-    const timestamp = formatTimestamp(new Date());
     const pageTitle = result.title ? result.title.trim() : 'page';
-    const fileName = `${sanitizeFilename(pageTitle)}_${timestamp}.html`;
+    const fileName = `${sanitizeFilename(pageTitle)}.html`;
 
     // 创建 FormData
     const formData = new FormData();
     const blob = new Blob([result.html], { type: 'text/html;charset=utf-8' });
     formData.append('file', blob, fileName);
-    formData.append('title', result.title || 'Untitled');
-    formData.append('url', result.url || '');
-    formData.append('timestamp', timestamp);
 
     // 准备请求头
     const headers = {};

@@ -39,9 +39,7 @@ RUN mkdir -p /app/data
 # 暴露端口
 EXPOSE 8080
 
-# 设置环境变量默认值
-ENV USER=admin
-ENV PASS=admin
+
 
 # 运行
 CMD ["./pagelite-server"] 
