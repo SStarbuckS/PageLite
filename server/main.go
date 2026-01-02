@@ -411,13 +411,7 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
-const dirIndexTemplate = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Index of {{.Path}}</title>
-  <style>
+const commonStyles = `
     * {
       box-sizing: border-box;
     }
@@ -499,7 +493,15 @@ const dirIndexTemplate = `<!DOCTYPE html>
       .size { display: none; }
       .name { width: 100%; }
     }
-  </style>
+`
+
+const dirIndexTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Index of {{.Path}}</title>
+  <style>` + commonStyles + `</style>
 </head>
 <body>
   <h1>Index of {{.Path}}</h1>
@@ -559,89 +561,7 @@ const allFilesTemplate = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Index of /all/</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      color: #333;
-      margin: 0;
-      padding: 20px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    h1 {
-      font-size: 18px;
-      border-bottom: 1px solid #eee;
-      margin: 0 0 20px 0;
-      padding-bottom: 10px;
-      font-weight: normal;
-      overflow-wrap: break-word;
-      word-break: break-all;
-    }
-    a {
-      text-decoration: none;
-      color: #0366d6;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-    th {
-      text-align: left;
-      font-weight: 600;
-      border-bottom: 1px solid #eee;
-      padding: 8px 0;
-      color: #666;
-    }
-    td {
-      padding: 8px 0;
-      border-bottom: 1px solid #f9f9f9;
-      vertical-align: top;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .name {
-      width: 50%;
-    }
-    .name a {
-      display: block;
-      overflow-wrap: break-word;
-      word-break: break-all;
-    }
-    .year {
-      width: 15%;
-      color: #888;
-      font-size: 13px;
-      text-align: right;
-    }
-    .size {
-      width: 15%;
-      text-align: right;
-      color: #888;
-      font-size: 13px;
-      font-family: Consolas, Monaco, "Courier New", monospace;
-    }
-    .footer {
-      margin-top: 20px;
-      font-size: 12px;
-      color: #999;
-      border-top: 1px solid #eee;
-      padding-top: 10px;
-    }
-    @media (max-width: 600px) {
-      body { padding: 15px; }
-      .year { display: none; }
-      .size { display: none; }
-      .name { width: 100%; }
-    }
-  </style>
+  <style>` + commonStyles + `</style>
 </head>
 <body>
   <h1>Index of /all/</h1>
@@ -649,20 +569,20 @@ const allFilesTemplate = `<!DOCTYPE html>
     <thead>
       <tr>
         <th class="name">Name</th>
-        <th class="year">Year</th>
+        <th class="date">Date</th>
         <th class="size">Size</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td class="name"><a href="/">../</a></td>
-        <td class="year">-</td>
+        <td class="date">-</td>
         <td class="size">-</td>
       </tr>
       {{range .Files}}
       <tr>
         <td class="name"><a href="/{{.Year}}/{{.Name}}" target="_blank">{{.Name}}</a></td>
-        <td class="year">{{.Year}}</td>
+        <td class="date">{{.ModTime.Format "2006-01-02 15:04"}}</td>
         <td class="size">{{.Size}}</td>
       </tr>
       {{end}}
